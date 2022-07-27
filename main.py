@@ -100,6 +100,7 @@ def main(_argv):
         out = cv2.VideoWriter(FLAGS.output, codec, fps, (width, height))
 
     frame_num = 0
+    total = 0
     # while video is running
     while True:
         return_value, frame = vid.read()
@@ -213,7 +214,6 @@ def main(_argv):
         # Call the tracker
         tracker.predict()
         tracker.update(detections)
-        total = 0
         trace = []
         centroid_dict = dict()
         group_list = []
