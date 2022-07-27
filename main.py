@@ -230,24 +230,22 @@ def main(_argv):
             color = colors[int(track.track_id) % len(colors)]
             color = [i * 255 for i in color]
             
-            cx = (int(bbox[2]) + int(bbox[0])) / 2.0
-            cy = (int(bbox[3]) + int(bbox[1])) / 2.0
-            centroid_dict[track.track_id] = (cx, cy, int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
-            
+            cx = int((int(bbox[2]) + int(bbox[0])) / 2)
+            cy = int((int(bbox[3]) + int(bbox[1])) / 2)
+            centroid_dict[track.track_id] = (cx, cy)
             
             for (id1, p1), (id2, p2) in combinations(centroid_dict.items(), 2):
-                dx, dy = p1[0] - p2[0], p1[1] - p2[1]
+                dx, dy = p2[0] - p1[0], p2[1] - p1[1]
                 distance = math.sqrt(dx * dx + dy * dy)
-                if distance < 50.0:
+                print(f'{id1} -> {id2}: distance is {distance}')
+                if distance < 200.0:
                     if id1 not in group_list:
                         group_list.append(id1)
+                        
                     if id2 not in group_list:
                         group_list.append(id2)
+            print(group_list)
                     
-            # cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
-            # cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
-            # cv2.putText(frame, class_name + "-" + str(track.track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
-            
             # cv2.putText(frame, "Pedestrians in Group: {}".format(len(group_list)), (5, 70), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 0, 255), 2)
             print("Task 3.1 --> Pedestrians in Group: {}".format(len(group_list)))
             # cv2.putText(frame, "Pedestrians Alone: {}".format(count-len(group_list)), (5, 105), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 255, 0), 2)
@@ -258,17 +256,18 @@ def main(_argv):
                     trace.append(track.track_id)
                 if track.track_id > total:
                     total = track.track_id
-              
-            for id, box in centroid_dict.items():
-                if id in group_list:
-                    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
-                    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*3, int(bbox[1])), color, -1)
-                    cv2.putText(frame, str(track.track_id) + ' G', (int(bbox[0]), int(bbox[1]-10)),0, 0.50, (255,255,255),2)
+            
+            
+            if int(track.track_id) in group_list:
+                print(f '({track.track_id}, {group_list}) --> in Group')
+                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
+                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*3, int(bbox[1])), color, -1)
+                cv2.putText(frame, str(track.track_id) + ' G', (int(bbox[0]), int(bbox[1]-10)),0, 0.50, (255,255,255),2)
 
-                else:
-                    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
-                    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*4, int(bbox[1])), color, -1)
-                    cv2.putText(frame, str(track.track_id) + ' NG', (int(bbox[0]), int(bbox[1]-10)),0, 0.50, (255,255,255),2)
+            else:
+                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
+                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*4, int(bbox[1])), color, -1)
+                cv2.putText(frame, str(track.track_id) + ' NG', (int(bbox[0]), int(bbox[1]-10)),0, 0.50, (255,255,255),2)
             
         # if enable info flag then print details about each track
             if FLAGS.info:
