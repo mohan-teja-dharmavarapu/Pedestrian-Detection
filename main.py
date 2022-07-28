@@ -2,6 +2,7 @@ import os
 from itertools import combinations
 import math
 import time
+from tracemalloc import start
 import tensorflow as tf
 from absl import app, flags
 from absl.flags import FLAGS
@@ -44,6 +45,26 @@ flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
 
+#global variables used for task 2.3(create manual box)
+drawing = False
+start_point = (0,0)
+end_point = (0,0)
+user_rect_count = 0
+
+#use mouse event to get manual box coords
+def mouse_drawing(event, x, y, flags, params):
+    global start_point
+    global end_point
+    global drawing
+    if event == cv2.EVENT_LBUTTONDOWN:
+        drawing = True
+        start_point = (x,y)
+    elif event == cv2.EVENT_LBUTTONUP:
+        drawing = False
+        end_point = (x,y)
+        print(start_point, end_point)
+
+
 def main(_argv):
     # Definition of the parameters
     max_cosine_distance = 0.4
@@ -85,8 +106,12 @@ def main(_argv):
     # begin video capture
     try:
         vid = cv2.VideoCapture(int(video_path))
+        cv2.namedWindow("Output Video")
+        cv2.setMouseCallback("Output Video", mouse_drawing)
     except:
         vid = cv2.VideoCapture(video_path)
+        cv2.namedWindow("Output Video")
+        cv2.setMouseCallback("Output Video", mouse_drawing)
 
     out = None
 
@@ -105,6 +130,10 @@ def main(_argv):
         return_value, frame = vid.read()
         if return_value:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            #draw rectangle if mouse not clicked
+            if not drawing:
+                print(start_point, end_point)
+                cv2.rectangle(frame,start_point,end_point,(0,0,255),0)
             # image = Image.fromarray(frame)
         else:
             print('Video has ended or failed, try a different video format!')
@@ -232,9 +261,23 @@ def main(_argv):
             
             cx = (int(bbox[2]) + int(bbox[0])) / 2.0
             cy = (int(bbox[3]) + int(bbox[1])) / 2.0
+
+
             centroid_dict[track.track_id] = (cx, cy, int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+
+            #count boxes in user rect
+            global user_rect_count 
+            user_rect_count = 0
+            all_boxes = list(centroid_dict.values())
+
+            for curr_box in all_boxes:
+                if start_point[0] <= int(curr_box[0]) <= end_point[0] and start_point[1] <= int(curr_box[1]) <= end_point[1]:
+                    user_rect_count+=1
+                    print("curr_box", curr_box)
+
+
             
-            
+            print("BOX COUNT: ", user_rect_count)
             for (id1, p1), (id2, p2) in combinations(centroid_dict.items(), 2):
                 dx, dy = p1[0] - p2[0], p1[1] - p2[1]
                 distance = math.sqrt(dx * dx + dy * dy)
@@ -275,7 +318,10 @@ def main(_argv):
                 print()
                 print("Task 1.1 - 1.2 - 1.3 --> Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
                 print()
-                
+
+        #display total pedestrians in users box        
+        cv2.putText(frame, " count:{}".format(user_rect_count), (end_point[0]-50, end_point[1]+10), 0,.7, (0, 0, 255), 2)
+        
         # calculate frames per second of running detections
         fps = 1.0 / (time.time() - start_time)
         print("FPS: %.2f" % fps)
