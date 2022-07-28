@@ -2,6 +2,7 @@ import os
 from itertools import combinations
 import math
 import time
+from tokenize import group
 from tracemalloc import start
 import tensorflow as tf
 from absl import app, flags
@@ -51,6 +52,10 @@ start_point = (0,0)
 end_point = (0,0)
 user_rect_count = 0
 
+def common(a,b): 
+    c = [value for value in a if value in b] 
+    return c
+
 #use mouse event to get manual box coords
 def mouse_drawing(event, x, y, flags, params):
     global start_point
@@ -63,13 +68,13 @@ def mouse_drawing(event, x, y, flags, params):
         drawing = False
         end_point = (x,y)
         print(start_point, end_point)
-
-
+        
 def main(_argv):
     # Definition of the parameters
     max_cosine_distance = 0.4
     nn_budget = None
     nms_max_overlap = 1.0
+    group_pairs1 = []
     
     # initialize deep sort
     model_filename = 'model_data/mars-small128.pb'
@@ -214,11 +219,6 @@ def main(_argv):
                 names.append(class_name)
         names = np.array(names)
         count = len(names)
-        if FLAGS.count:
-            cv2.putText(frame, "Pedestrians in current frame: {}".format(count), (5, 35), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (255, 0, 0), 2)
-            print()
-            print("TASK 2.2 --> Pedestrians in current frame: {}".format(count))
-            print()
             
         # delete detections that are not in allowed_classes
         bboxes = np.delete(bboxes, deleted_indx, axis=0)
@@ -243,12 +243,16 @@ def main(_argv):
         # Call the tracker
         tracker.predict()
         tracker.update(detections)
+        total = 0
         trace = []
         centroid_dict = dict()
         group_list = []
         
+        
         # update tracks
         for track in tracker.tracks:
+            group_pairs = []
+            
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue 
             bbox = track.to_tlbr()
@@ -261,10 +265,8 @@ def main(_argv):
             
             cx = (int(bbox[2]) + int(bbox[0])) / 2.0
             cy = (int(bbox[3]) + int(bbox[1])) / 2.0
-
-
             centroid_dict[track.track_id] = (cx, cy, int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
-
+            
             #count boxes in user rect
             global user_rect_count 
             user_rect_count = 0
@@ -273,37 +275,30 @@ def main(_argv):
             for curr_box in all_boxes:
                 if start_point[0] <= int(curr_box[0]) <= end_point[0] and start_point[1] <= int(curr_box[1]) <= end_point[1]:
                     user_rect_count+=1
-                    print("curr_box", curr_box)
+                    # print("curr_box", curr_box)
 
-
+            if user_rect_count > 0:
+                print("Task 2.3 - 2.4 count in highlited box: ", user_rect_count)
             
-            print("BOX COUNT: ", user_rect_count)
             for (id1, p1), (id2, p2) in combinations(centroid_dict.items(), 2):
-                dx, dy = p2[0] - p1[0], p2[1] - p1[1]
+                dx, dy = p1[0] - p2[0], p1[1] - p2[1]
                 distance = math.sqrt(dx * dx + dy * dy)
-                print(f'{id1} -> {id2}: distance is {distance}')
+                
                 if distance < 200.0:
+                    if (id1, id2) not in group_pairs:
+                        group_pairs.append((id1, id2))
                     if id1 not in group_list:
                         group_list.append(id1)
-                        
                     if id2 not in group_list:
                         group_list.append(id2)
-            print(group_list)
-                    
-            # cv2.putText(frame, "Pedestrians in Group: {}".format(len(group_list)), (5, 70), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 0, 255), 2)
-            print("Task 3.1 --> Pedestrians in Group: {}".format(len(group_list)))
-            # cv2.putText(frame, "Pedestrians Alone: {}".format(count-len(group_list)), (5, 105), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 255, 0), 2)
-            print("Task 3.1 --> Pedestrians Alone: {}".format(count-len(group_list)))
-                    
+            
             if class_name == 'pedestrian':
                 if track.track_id not in trace:
                     trace.append(track.track_id)
                 if track.track_id > total:
                     total = track.track_id
             
-            
             if int(track.track_id) in group_list:
-                print(f '({track.track_id}, {group_list}) --> in Group')
                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*3, int(bbox[1])), color, -1)
                 cv2.putText(frame, str(track.track_id) + ' G', (int(bbox[0]), int(bbox[1]-10)),0, 0.50, (255,255,255),2)
@@ -322,8 +317,47 @@ def main(_argv):
         #display total pedestrians in users box        
         cv2.putText(frame, " count:{}".format(user_rect_count), (end_point[0]-50, end_point[1]+10), 0,.7, (0, 0, 255), 2)
         
-        # calculate frames per second of running detections
+       # calculate frames per second of running detections
         fps = 1.0 / (time.time() - start_time)
+        
+        if FLAGS.count:
+            print()
+            cv2.putText(frame, "2.2 - Pedestrians in current frame: {}".format(count), (5, 35), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (255, 0, 0), 2)
+            print("TASK 2.2 --> Pedestrians in current frame: {}".format(count))
+            print()
+            
+            print()
+            cv2.putText(frame, "3.1 - Pedestrians in Group, Alone: {}, {}".format(len(group_list), count-len(group_list)), (5, 70), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 0, 255), 2)
+            print("Task 3.1 --> Pedestrians in Group: {}".format(len(group_list)))
+            # cv2.putText(frame, "Pedestrians Alone: {}".format(count-len(group_list)), (5, 105), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 255, 0), 2)
+            print("Task 3.1 --> Pedestrians Alone: {}".format(count-len(group_list)))
+            print()
+            
+            print()
+            if len(group_pairs1) == 3:
+                difference_1 = set(group_pairs1[-1]).difference(set(group_pairs1[-2]))
+                difference_2 = set(group_pairs1[-2]).difference(set(group_pairs1[-1]))
+                list_difference = list(difference_1.union(difference_2))
+                
+                d = common(group_pairs1[-3], group_pairs1[-2])
+                difference_3 = set(group_pairs1[-1]).difference(d)
+                difference_4 = set(d).difference(set(group_pairs1[-1]))
+                list_difference1 = list(difference_3.union(difference_4))
+                
+                
+                for i in list_difference:
+                    print(f'Task 3.2 --> Pedestrians {i[0]} and {i[1]} just formed a new group')
+                
+                for i in list_difference1:
+                    print(f'Task 3.2 --> Pedestrians {i[0]} and {i[1]} just destroyed their group')
+            print()
+        
+        if len(group_pairs1) > 3:
+            group_pairs1 = [group_pairs1[-2], group_pairs1[-1]]
+        group_pairs1.append(group_pairs)
+        
+            
+            
         print("FPS: %.2f" % fps)
         print()
         print('---------------')
