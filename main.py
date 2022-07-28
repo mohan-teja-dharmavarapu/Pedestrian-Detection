@@ -15,6 +15,7 @@ from PIL import Image
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from collections import defaultdict
 
 # deep sort imports
 from deep_sort import preprocessing, nn_matching
@@ -45,6 +46,7 @@ flags.DEFINE_float('score', 0.50, 'score threshold')
 flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
+flags.DEFINE_boolean('trajectory', False, 'draws the tracking lines of pedestrians onscreen')
 
 #global variables used for task 2.3(create manual box)
 drawing = False
@@ -128,6 +130,9 @@ def main(_argv):
         fps = int(vid.get(cv2.CAP_PROP_FPS))
         codec = cv2.VideoWriter_fourcc(*FLAGS.output_format)
         out = cv2.VideoWriter(FLAGS.output, codec, fps, (width, height))
+
+    object_ids = []
+    centroids = defaultdict(list)
 
     frame_num = 0
     total = 0
@@ -276,6 +281,25 @@ def main(_argv):
                 if start_point[0] <= int(curr_box[0]) <= end_point[0] and start_point[1] <= int(curr_box[1]) <= end_point[1]:
                     user_rect_count+=1
                     # print("curr_box", curr_box)
+
+            # TASK 1.3: draw the trajectories for the pedestrians
+            if FLAGS.trajectory:
+                centroids[track.track_id].append((int(cx),int(cy)))
+                cv2.circle(frame, (int(cx), int(cy)), 3, color,-1)
+
+                if track.track_id not in object_ids:
+                    object_ids.append(track.track_id)
+                    track_start = (int(cx), int(cy))
+                    track_end = (int(cx), int(cy))
+                    cv2.line(frame, track_start, track_end, color, 2)
+                # update start and end point and draw all the tracking lines to that certain point
+                else:
+                    dict_len = len(centroids[track.track_id])
+                    for pt in range(dict_len):
+                        if not pt + 1 == dict_len:
+                            track_start = centroids[track.track_id][pt][0], centroids[track.track_id][pt][1]
+                            track_end = centroids[track.track_id][pt+1][0], centroids[track.track_id][pt+1][1]
+                            cv2.line(frame, track_start, track_end, color, 2)
 
             if user_rect_count > 0:
                 print("Task 2.3 - 2.4 count in highlited box: ", user_rect_count)
