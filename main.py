@@ -322,6 +322,13 @@ def main(_argv):
                 if track.track_id > total:
                     total = track.track_id
             
+            # TASK 3.3 - turns the bounding box red when the pedestrian is about to leave/enter window
+            width = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            pad = 50
+            if bbox[2] >= width - pad or bbox[3] >= height - pad or bbox[0] <= pad or bbox[0] <= pad:
+                color = (255, 0, 0)
+
             if int(track.track_id) in group_list:
                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*3, int(bbox[1])), color, -1)
