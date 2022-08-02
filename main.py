@@ -3,6 +3,7 @@ from itertools import combinations
 import math
 import time
 from tracemalloc import start
+
 import tensorflow as tf
 from absl import app, flags
 from absl.flags import FLAGS
@@ -40,7 +41,7 @@ flags.DEFINE_string('video', './data/video/test.mp4', 'path to input video or se
 flags.DEFINE_string('output', None, 'path to output video')
 flags.DEFINE_string('output_format', 'XVID', 'codec used in VideoWriter when saving video to file')
 flags.DEFINE_float('iou', 0.45, 'iou threshold')
-flags.DEFINE_float('score', 0.50, 'score threshold')
+flags.DEFINE_float('score', 0.30, 'score threshold')
 flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
@@ -248,6 +249,7 @@ def main(_argv):
         group_list = []
         
         # update tracks
+        score_count = 0 
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue 
@@ -275,13 +277,15 @@ def main(_argv):
                     user_rect_count+=1
                     print("curr_box", curr_box)
 
-
+            if(score_count == len(scores)-1):
+                score_count = 0
+            score_count +=1
+            cv2.putText(frame,  '[' + str(np.round(scores[score_count]*100,3)) + ']' , (int(bbox[0])-10, int(bbox[1]-40)),0, 0.40, (255,255,255),2)
             
             print("BOX COUNT: ", user_rect_count)
             for (id1, p1), (id2, p2) in combinations(centroid_dict.items(), 2):
                 dx, dy = p2[0] - p1[0], p2[1] - p1[1]
                 distance = math.sqrt(dx * dx + dy * dy)
-                print(f'{id1} -> {id2}: distance is {distance}')
                 if distance < 200.0:
                     if id1 not in group_list:
                         group_list.append(id1)
@@ -303,7 +307,7 @@ def main(_argv):
             
             
             if int(track.track_id) in group_list:
-                print(f '({track.track_id}, {group_list}) --> in Group')
+                print(f'({track.track_id}, {group_list}) --> in Group')
                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*3, int(bbox[1])), color, -1)
                 cv2.putText(frame, str(track.track_id) + ' G', (int(bbox[0]), int(bbox[1]-10)),0, 0.50, (255,255,255),2)
@@ -318,6 +322,12 @@ def main(_argv):
                 print()
                 print("Task 1.1 - 1.2 - 1.3 --> Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
                 print()
+
+            if FLAGS.score:
+                print("Accuracy of boxes withing given threshold")
+                print(scores)
+
+
 
         #display total pedestrians in users box        
         cv2.putText(frame, " count:{}".format(user_rect_count), (end_point[0]-50, end_point[1]+10), 0,.7, (0, 0, 255), 2)
