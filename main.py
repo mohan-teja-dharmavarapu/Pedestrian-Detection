@@ -69,7 +69,7 @@ def mouse_drawing(event, x, y, flags, params):
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
         end_point = (x,y)
-        print(start_point, end_point)
+        # print(start_point, end_point)
         
 def main(_argv):
     # Definition of the parameters
@@ -353,12 +353,15 @@ def main(_argv):
         
         if FLAGS.count:
             print()
-            cv2.putText(frame, "2.2 - Pedestrians in current frame: {}".format(count), (5, 35), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (255, 0, 0), 2)
+            cv2.putText(frame, "Pedestrians in current frame: {}".format(count), (5, 35), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (255, 0, 0), 2)
             print("TASK 2.2 --> Pedestrians in current frame: {}".format(count))
             print()
             
             print()
-            cv2.putText(frame, "3.1 - Pedestrians in Group, Alone: {}, {}".format(len(group_list), count-len(group_list)), (5, 70), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 0, 255), 2)
+            if count-len(group_list) >= 0:
+                cv2.putText(frame, "Pedestrians in Group, Alone: {}, {}".format(len(group_list), count-len(group_list)), (5, 70), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 0, 255), 2)
+            else:
+                cv2.putText(frame, "Pedestrians in Group, Alone: {}, {}".format(len(group_list), 0), (5, 70), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 0, 255), 2)
             print("Task 3.1 --> Pedestrians in Group: {}".format(len(group_list)))
             # cv2.putText(frame, "Pedestrians Alone: {}".format(count-len(group_list)), (5, 105), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 255, 0), 2)
             print("Task 3.1 --> Pedestrians Alone: {}".format(count-len(group_list)))
